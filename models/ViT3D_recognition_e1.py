@@ -1,6 +1,6 @@
 """
-This module contains VisionTransformer3D class for multimodal classification of
-sMRI, FNC, SNP data.
+This module contains VisionTransformer3D class for unimodal classification of
+sMRI data.
 """
 
 import torch
@@ -60,12 +60,14 @@ class MLPBlock(nn.Module):
         embed_dim (int): Dimensionality of the input embeddings.
         hidden_dim (int): Dimensionality of the hidden layer.
     """
-    def __init__(self, embed_dim: int, hidden_dim: int):
+    def __init__(self, embed_dim: int, hidden_dim: int, p: float = 0.):
         super(MLPBlock, self).__init__()
         self.fc1 = nn.Linear(embed_dim, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, embed_dim)
         self.activation1 = nn.GELU()
         self.activation2 = nn.GELU()
+        self.drop = nn.Dropout(p)
+
     def forward(self, x):
         return self.activation2(self.fc2(self.activation1(self.fc1(x))))
     
@@ -79,10 +81,10 @@ class TransformerEncoderBlock(nn.Module):
         num_heads (int): Number of attention heads.
         hidden_dim (int): Dimensionality of the hidden layer in the MLP.
     """
-    def __init__(self, embed_dim: int, num_heads: int, hidden_dim: int):
+    def __init__(self, embed_dim: int, num_heads: int, hidden_dim: int, p_ratio: float = 0.):
         super(TransformerEncoderBlock, self).__init__()
         self.attn_block = MultiHeadSelfAttentionBlock(embed_dim, num_heads)
-        self.mlp_block = MLPBlock(embed_dim, hidden_dim)
+        self.mlp_block = MLPBlock(embed_dim, hidden_dim, p_ratio)
         self.layer_norm1 = nn.LayerNorm(embed_dim)
         self.layer_norm2 = nn.LayerNorm(embed_dim)
 
@@ -90,6 +92,7 @@ class TransformerEncoderBlock(nn.Module):
         x = x + self.attn_block(self.layer_norm1(x))
         x = x + self.mlp_block(self.layer_norm2(x))
         return x
+    
 class VisionTransformer3D(nn.Module):
     """
     Implements a 3D Vision Transformer model for processing volumetric data.
@@ -111,13 +114,14 @@ class VisionTransformer3D(nn.Module):
     """
     def __init__(self, num_classes: int, image_size: Tuple[int, ...], 
                  in_channels: int = 1, patch_size: int = 8,embed_dim: int = 1024, 
-                 num_heads: int = 4, num_layers: int = 4, hidden_dim: int = 128):
+                 num_heads: int = 4, num_layers: int = 4, hidden_dim: int = 128,
+                 p_ratio: float = 0.):
         super(VisionTransformer3D, self).__init__()
         self.patch_embedding = PatchEmbedding3D(in_channels, patch_size, 
                                                 embed_dim, image_size)
         self.transformer_blocks = nn.ModuleList([
-            TransformerEncoderBlock(embed_dim, num_heads, hidden_dim) for _ in 
-            range(num_layers)
+            TransformerEncoderBlock(embed_dim, num_heads, hidden_dim, p_ratio)
+            for _ in range(num_layers)
         ])
         self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
         self.pos_embed = nn.Parameter(

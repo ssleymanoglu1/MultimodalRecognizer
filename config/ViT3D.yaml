@@ -1,0 +1,39 @@
+EXPERIMENT:
+  tag: VIT3DE6
+  name: dp_GenViT3D_e6
+  edition: 6
+  architecture: ViT3D
+  save_model: True
+MODEL:
+  num_classes: 1
+  image_size: [121, 145, 121]
+  in_channels: 1
+  patch_size: 8
+  embed_dim: 1024
+  num_heads: 4
+  num_layers: 7
+  hidden_dim: 128
+  p_ratio: 0.3
+DATASET:
+  imbalanced_flag: False
+  transform: True
+  has_input_channel: True
+  task: ViT3D
+TRAIN:
+  epochs: 150
+  early_stop: False
+  base_lr: 1e-1
+  min_lr: 4e-5
+  weight_decay: 0.1
+  step_lr: 140
+  milestones: [5, 15, 50, 100]
+  batch_size: 10
+  workers: 1
+  warmup_epochs: 0
+  warmup_lr: 1e-2
+  loss: BCE
+TEST:
+  test_size: 5
+  test_workers: 0
+  shuffling: False
+  metric: BCE

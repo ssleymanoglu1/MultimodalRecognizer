@@ -9,7 +9,7 @@ from torch.nn import BCEWithLogitsLoss, CrossEntropyLoss
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from lib.data_io import GenMRIFusionDataset
-from models.GenMRIFusionViT_recognition_e1 import VisionTransformer3D
+from models.ViT3D_recognition_e1 import VisionTransformer3D
 from lib.tools import init_weights, fetch_list_of_backup_files
 from omegaconf import OmegaConf
 
@@ -29,12 +29,16 @@ def criterion(x1: torch.Tensor,
 
     Returns:
         torch.Tensor: Loss value of given tensors.
-    """ 
+    """
+    x1, x2 = x1.squeeze(), x2.squeeze()
     if loss_function == 'BCE':
-        return BCEWithLogitsLoss()(x1.squeeze(), x2.squeeze())
+        metric = BCEWithLogitsLoss()(x1, x2)
     else:
-        metric = CrossEntropyLoss(reduction='sum')
-        return metric(x1, x2)
+        metric = CrossEntropyLoss(reduction='sum')(x1, x2)
+    score_ = (x1 > 0.0).long()
+    accuracy_ = (score_.squeeze() == x2.squeeze()).float()
+    accuracy_ = accuracy_.sum() 
+    return metric, accuracy_
 
 def main():
     parser = argparse.ArgumentParser(prog = 'MultimodalRecognizer framework', 
@@ -140,8 +144,7 @@ def main():
                     optimizer.zero_grad(set_to_none=True)
                     if model_architecture == 'ViT3D':
                         preds = base_model(sMRI_inp)
-                        loss = criterion(preds, label, conf.TRAIN.loss)
-                        accuracy_ = (preds.round() == label).float().sum()
+                        loss, acc = criterion(preds, label, conf.TRAIN.loss)
                     else:
                         preds = base_model(sMRI_inp, fnc_inp, snp_inp)
                         loss = criterion(preds, label, conf.TRAIN.loss)
@@ -149,7 +152,7 @@ def main():
                         loss.backward()
                         optimizer.step()
                     running_loss += loss.item()
-                    running_accuracy += accuracy_
+                    running_accuracy += acc
 
             if phase == 'train':
                 scheduler.step()

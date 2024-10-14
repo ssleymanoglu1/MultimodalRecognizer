@@ -126,7 +126,7 @@ class VisionTransformer3D(nn.Module):
             TransformerEncoderBlock(embed_dim, num_heads, hidden_dim, p_ratio)
             for _ in range(num_layers)
         ])
-        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim))
+        self.cls_token = nn.Parameter(torch.zeros(1, 1, embed_dim)) #does require gradients arg is True?
         self.pos_embed = nn.Parameter(
             torch.zeros(1, 1 + self.patch_embedding.n_patches, embed_dim)
             )

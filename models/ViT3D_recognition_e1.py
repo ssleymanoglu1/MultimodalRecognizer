@@ -69,7 +69,10 @@ class MLPBlock(nn.Module):
         self.drop = nn.Dropout(p)
 
     def forward(self, x):
-        return self.activation2(self.fc2(self.activation1(self.fc1(x))))
+        x = self.activation1(self.fc1(x))
+        x = self.activation2(self.fc2(x))
+        x = self.drop(x)
+        return x
     
 class TransformerEncoderBlock(nn.Module):
     """

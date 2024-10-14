@@ -99,10 +99,7 @@ def main():
         main_dataset.imbalanced_weights = main_dataset.imbalanced_weights.to(dev, non_blocking=True)
     if save_flag:
         backup_files = fetch_list_of_backup_files(model_architecture)
-        os.system(f"cp -f {os.path.join(os.path.dirname(os.path.abspath(__file__)),'config', backup_files[0])} {os.path.join(os.path.dirname(os.path.abspath(__file__)),'models', backup_files[1])} {checkpoints_directory}")
-    # data_pack = {}
-    # data_pack['train'], data_pack['val'] = random_split(main_dataset, [.8, .2], generator=torch.Generator().manual_seed(70))
-    # dataloaders = {x: DataLoader(data_pack[x], batch_size=int(conf.TRAIN.batch_size), shuffle=True, num_workers=int(conf.TRAIN.workers), pin_memory=True) for x in ['train', 'val']}       
+        os.system(f"cp -f {os.path.join(os.path.dirname(os.path.abspath(__file__)),'config', backup_files[0])} {os.path.join(os.path.dirname(os.path.abspath(__file__)),'models', backup_files[1])} {checkpoints_directory}")     
     gpu_ids = list(range(torch.cuda.device_count()))
     writer = SummaryWriter(log_dir=log_directory, comment=conf.EXPERIMENT.name)
     if model_architecture == 'ViT3D':
@@ -123,7 +120,7 @@ def main():
             base_model = DataParallel(base_model, device_ids = gpu_ids)
             logging.info(f"Pytorch Distributed Data Parallel activated using gpus: {gpu_ids}")        
     logging.info(f"Optimizer: Adam , Criterion: {conf.TRAIN.loss} , lr: {conf.TRAIN.base_lr} , decay: {conf.TRAIN.weight_decay}")
-    kfold = KFold(n_splits=5, shuffle=True)
+    kfold = KFold(n_splits=5, shuffle=True, random_state=7)
     for fold, (train_ids, test_ids) in enumerate(kfold.split(main_dataset)):
         data_pack = {}
         data_pack['train'], data_pack['val'] = torch.utils.data.SubsetRandomSampler(train_ids), torch.utils.data.SubsetRandomSampler(test_ids)
@@ -176,7 +173,7 @@ def main():
                             'optimizer': optimizer.state_dict(),
                             'loss': phase_error,
                             'edition': conf.EXPERIMENT.edition}, 
-                            os.path.join(checkpoints_directory, 'checkpoint_{}_{}.pth'.format(epoch, time.strftime("%m%d%y_%H%M%S"))))
+                            os.path.join(checkpoints_directory, 'checkpoint_{}_{}_{}.pth'.format(fold, epoch, time.strftime("%m%d%y_%H%M%S"))))
         
     writer.flush()
     writer.close()
